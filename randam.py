@@ -1,4 +1,5 @@
 import random
+import os
 import requests
 from fastapi import FastAPI, HTTPException, status
 from fastapi.responses import JSONResponse
@@ -49,8 +50,7 @@ class WeightedRandomSampler:
         return low
     
 def fetch_endpoint(category):
-    endpoint_url = "http://localhost:8080/contentbasedRecommend/" + category
-    # endpoint_url = "/contentbasedRecommend/" + category # 本番用
+    endpoint_url = os.getenv("BACKEND_URL") + category 
 
     response = requests.get(endpoint_url)
 
