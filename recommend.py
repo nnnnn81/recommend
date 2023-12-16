@@ -19,7 +19,7 @@ def user_similarity_matrix(user_ratings):
     user_item_matrix = {}
     movie_ids = set()
     for entry in user_ratings:
-        user_id, movie_id, evaluation = entry['userId'], entry['movieId'], entry['evaluation']
+        user_id, movie_id, evaluation = entry.userId, entry.movieId, entry.evaluation
         if user_id not in user_item_matrix:
             user_item_matrix[user_id] = {}
         user_item_matrix[user_id][movie_id] = evaluation
@@ -50,9 +50,9 @@ def user_similarity_matrix(user_ratings):
 #     {"userId": 4, "movieId": 101, "evaluation": 4.0},
 # ]
 
-def recommend_movies_for_user(user_id, user_similarity_matrix, user_ratings_data, num_recommendations=5):
+def recommend_movies_for_user(user_id, user_similarity_matrix, user_ratings_data, num_recommendations=10):
     # ユーザーが評価済みの映画を取得
-    watched_movies = {entry['movieId']: entry['evaluation'] for entry in user_ratings_data if entry['userId'] == user_id}
+    watched_movies = {entry.movieId: entry.evaluation for entry in user_ratings_data if entry.userId == user_id}
 
     # 類似ユーザー取得
     similar_users = np.argsort(user_similarity_matrix[user_id - 1])[::-1] + 1  # 似てる順でそーと
@@ -63,7 +63,7 @@ def recommend_movies_for_user(user_id, user_similarity_matrix, user_ratings_data
 
     # 類似ユーザーの評価からおすすめ映画を取得、ただしすでに評価済みの映画は含めない
     for similar_user_id in similar_users:
-        similar_user_ratings = {entry['movieId']: entry['evaluation'] for entry in user_ratings_data if entry['userId'] == similar_user_id}
+        similar_user_ratings = {entry.movieId: entry.evaluation for entry in user_ratings_data if entry.userId == similar_user_id}
         for movie_id, evaluation in similar_user_ratings.items():
             if movie_id not in watched_movies:
                 if movie_id not in recommended_movies:
