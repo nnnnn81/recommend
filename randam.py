@@ -1,4 +1,5 @@
 import random
+import requests
 from fastapi import FastAPI, HTTPException, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
@@ -15,21 +16,26 @@ class Movie(BaseModel):
 class WeightedRandomSampler:
     def __init__(self, data):
         self.data = data
-        self.total_weight = sum(item["evaluation"] for item in data)
+        self.total_weight = sum(item["Evaluation"] for item in data)
         self.cumulative_weights = self.calculate_cumulative_weights()
 
     def calculate_cumulative_weights(self):
         cumulative_weights = []
         current_weight = 0
         for item in self.data:
-            current_weight += item["evaluation"]
+            current_weight += item["Evaluation"]
             cumulative_weights.append(current_weight)
         return cumulative_weights
 
-    def sample(self):
-        random_value = random.uniform(0, self.total_weight)
+    def sample(self, selected_indices):
+        remaining_weight = self.total_weight
+        for idx in selected_indices:
+            remaining_weight -= self.data[idx]["Evaluation"]
+
+        # 残りの評価値を基にランダムサンプリング
+        random_value = random.uniform(0, remaining_weight)
         index = self.find_index(random_value)
-        return self.data[index]
+        return index
 
     def find_index(self, value):
         # 二分木探索を実行
@@ -41,56 +47,32 @@ class WeightedRandomSampler:
             else:
                 high = mid
         return low
+    
+def fetch_endpoint(category):
+    endpoint_url = "http://localhost:8080/contentbasedRecommend/" + category
+    # endpoint_url = "/contentbasedRecommend/" + category # 本番用
+
+    response = requests.get(endpoint_url)
+
+    return response.json()
 
 def recommend_movies(movie_list, num_recommendations=3):
     sampler = WeightedRandomSampler(movie_list)
-    selected_movies = [sampler.sample() for _ in range(num_recommendations)]
+    selected_indices = []
+    for _ in range(num_recommendations):
+        # 重複を避けるために選択済みの映画のインデックスを保持
+        index = sampler.sample(selected_indices)
+        selected_indices.append(index)
+
+    # 選択された映画を取得
+    selected_movies = [movie_list[index] for index in selected_indices]
     return selected_movies
 
-# 映画詳細情報が含まれるJSON
-# movies = [
-#     {
-#         "title": "Movie 1",
-#         "evaluation": 4.5
-#     },
-#     {
-#         "title": "Movie 2",
-#         "evaluation": 3.5
-#     },
-#     {
-#         "title": "Movie 3",
-#         "evaluation": 2.1
-#     },
-#     {
-#         "title": "Movie 4",
-#         "evaluation": 4.7
-#     },
-#     {
-#         "title": "Movie 5",
-#         "evaluation": 3.2
-#     },
-#     {
-#         "title": "Movie 6",
-#         "evaluation": 4.1
-#     },
-#     {
-#         "title": "Movie 7",
-#         "evaluation": 1.2
-#     },
-#     {
-#         "title": "Movie 8",
-#         "evaluation": 2.5
-#     },
-#     {
-#         "title": "Movie 9",
-#         "evaluation": 4.1
-#     }
-# ]
-
 @app.post("/recommend")
-async def recommend_movies_endpoint(requestBody: List[Movie]):
+async def recommend_movies_endpoint(category: str):
     try:
-        recommended_movies = recommend_movies(requestBody)
+        res = fetch_endpoint(category)
+        recommended_movies = recommend_movies(res)
         return JSONResponse(content={"recommendations": recommended_movies}, status_code=status.HTTP_200_OK)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
